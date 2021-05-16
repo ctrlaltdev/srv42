@@ -1,19 +1,23 @@
 build:
-	mkdir -p bin
-	cd src; go build -o ../bin/srv42 .
+	@mkdir -p bin
+	go build -o bin/srv42 .
 
-compile:
-	cd src; GOOS=darwin GOARCH=amd64 go build -o ../bin/srv42-darwin-amd64 .
-	cd src; GOOS=darwin GOARCH=arm64 go build -o ../bin/srv42-darwin-arm64 .
-	cd src; GOOS=linux GOARCH=amd64 go build -o ../bin/srv42-linux-amd64 .
-	cd src; GOOS=windows GOARCH=amd64 go build -o ../bin/srv42-windows-amd64.exe .
+clean:
+	@rm bin/*
 
-	tar czf bin/srv42-darwin-amd64.tar.gz bin/srv42-darwin-amd64
-	tar czf bin/srv42-darwin-arm64.tar.gz bin/srv42-darwin-arm64
-	tar czf bin/srv42-linux-amd64.tar.gz bin/srv42-linux-amd64
-	tar czf bin/srv42-windows-amd64.exe.tar.gz bin/srv42-windows-amd64.exe
+compile: clean
+	@for os in darwin linux; do \
+		for arch in amd arm; do \
+			GOOS=$$os GOARCH=$${arch}64 go build -o bin/srv42-$$os-$${arch}64 .; \
+			tar czf bin/srv42-$$os-$${arch}64.tar.gz bin/srv42-$$os-$${arch}64; \
+			sha256sum bin/srv42-$$os-$${arch}64.tar.gz > bin/srv42-$$os-$${arch}64.tar.gz.sha256; \
+			echo $$os $${arch}64 compiled; \
+		done \
+	done
 
-	sha256sum bin/srv42-darwin-amd64.tar.gz > bin/srv42-darwin-amd64.tar.gz.sha256
-	sha256sum bin/srv42-darwin-arm64.tar.gz > bin/srv42-darwin-arm64.tar.gz.sha256
-	sha256sum bin/srv42-linux-amd64.tar.gz > bin/srv42-linux-amd64.tar.gz.sha256
-	sha256sum bin/srv42-windows-amd64.exe.tar.gz > bin/srv42-windows-amd64.exe.tar.gz.sha256
+brew-sha256:
+	@for os in darwin linux; do \
+		for arch in amd arm; do \
+			echo "\"$$os-$${arch}64\" => \"$$(sha256sum bin/srv42-$$os-$${arch}64.tar.gz | egrep -o '^\w+')\""; \
+		done \
+	done
