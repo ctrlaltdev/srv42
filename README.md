@@ -15,3 +15,8 @@ To response another status than 202:
 ```sh
 srv42 -s 204
 ```
+
+To have the full details of the request:
+```sh
+srv42 -v
+```
