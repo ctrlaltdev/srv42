@@ -16,19 +16,27 @@ import (
 	"github.com/gorilla/mux"
 )
 
-const version = "1.2.0"
+const version = "1.3.0"
 
 var (
-	host    = flag.String("h", "127.0.0.1", "host to listen on")
+	hostv6  = flag.String("hostv6", "[::1]", "IPv6 host to listen on")
+	hostv4  = flag.String("hostv4", "127.0.0.1", "IPv4 host to listen on")
 	port    = flag.Int("p", 1337, "port to use")
 	status  = flag.Int("s", 202, "status code to return")
 	verbose = flag.Bool("v", false, "should srv42 print the full path and body")
 	debug   = flag.Bool("d", false, "print debug information")
 
+	printVersion = flag.Bool("version", false, "print srv42 version")
+
 	wait = 60 * time.Second
 
 	root *string
 )
+
+func printv() {
+	fmt.Printf("SRV42 - v%v\n", version)
+	os.Exit(0)
+}
 
 func ListenHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(*status)
@@ -46,7 +54,7 @@ func Init() {
 
 	}
 
-	utils.Debug(debug, fmt.Sprintf("Flags | host: %v - port: %v", *host, *port))
+	utils.Debug(debug, fmt.Sprintf("Flags | hosts: %v + %v - port: %v", *hostv6, *hostv4, *port))
 
 	if path.IsAbs(args[0]) {
 
@@ -86,9 +94,17 @@ func Serve() {
 
 	l := handlers.LoggingHandler(os.Stdout, r)
 
-	srv := &http.Server{
+	srvV6 := &http.Server{
 		Handler:      l,
-		Addr:         fmt.Sprintf("%s:%d", *host, *port),
+		Addr:         fmt.Sprintf("%s:%d", *hostv6, *port),
+		WriteTimeout: 15 * time.Second,
+		ReadTimeout:  15 * time.Second,
+		IdleTimeout:  60 * time.Second,
+	}
+
+	srvV4 := &http.Server{
+		Handler:      l,
+		Addr:         fmt.Sprintf("%s:%d", *hostv4, *port),
 		WriteTimeout: 15 * time.Second,
 		ReadTimeout:  15 * time.Second,
 		IdleTimeout:  60 * time.Second,
@@ -97,7 +113,12 @@ func Serve() {
 	fmt.Printf("Serving on: http://localhost:%d/\n", *port)
 
 	go func() {
-		err := srv.ListenAndServe()
+		err := srvV6.ListenAndServe()
+		utils.CheckErr(err)
+	}()
+
+	go func() {
+		err := srvV4.ListenAndServe()
 		utils.CheckErr(err)
 	}()
 
@@ -110,7 +131,8 @@ func Serve() {
 	ctx, cancel := context.WithTimeout(context.Background(), wait)
 	defer cancel()
 
-	srv.Shutdown(ctx)
+	srvV6.Shutdown(ctx)
+	srvV4.Shutdown(ctx)
 
 	log.Println("shutting down")
 	os.Exit(0)
@@ -118,6 +140,10 @@ func Serve() {
 
 func main() {
 	flag.Parse()
+
+	if *printVersion {
+		printv()
+	}
 
 	Init()
 
