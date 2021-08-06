@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/http/httputil"
 	"os"
 	"os/signal"
 	"path"
@@ -16,7 +17,7 @@ import (
 	"github.com/gorilla/mux"
 )
 
-const version = "1.3.0"
+const version = "1.3.1"
 
 var (
 	hostv6  = flag.String("hostv6", "[::1]", "IPv6 host to listen on")
@@ -40,6 +41,14 @@ func printv() {
 
 func ListenHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(*status)
+
+	if *verbose {
+		requestDump, err := httputil.DumpRequest(r, true)
+		if err != nil {
+			fmt.Println(err)
+		}
+		fmt.Printf("%s\n\n", string(requestDump))
+	}
 }
 
 func Init() {
